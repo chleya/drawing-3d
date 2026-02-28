@@ -1,0 +1,14 @@
+# Drawing 3D
+Road Engineering Management System
+
+# Dependencies
+flask>=2.0.0
+requests>=2.25.0
+
+# Development
+pytest>=7.0.0
+black>=22.0.0
+flake8>=4.0.0
+
+# Production
+gunicorn>=20.0.0

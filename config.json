@@ -1,0 +1,44 @@
+{
+  "debug": true,
+  "log_level": "INFO",
+  "data_dir": "./data",
+  "max_history": 1000,
+  "llm": {
+    "model": "minimax/MiniMax-M2.1",
+    "temperature": 0.7
+  },
+  "features": {
+    "weather": true,
+    "cost": true,
+    "equipment": true,
+    "report": true,
+    "ai_qa": true,
+    "planning": true,
+    "quality_detection": true,
+    "safety": true,
+    "compliance_assistant": true,
+    "drone_inspection": true,
+    "material_scheduling": true,
+    "ar_view": true,
+    "drone": false,
+    "ar_view_old": false,
+    "material_scheduling_old": false
+  },
+  "limits": {
+    "max_upload_size": 10485760,
+    "max_query_length": 500,
+    "rate_limit": 100
+  },
+  "weather": {
+    "cache_ttl": 300,
+    "default_location": "北京"
+  },
+  "cost": {
+    "currency": "CNY",
+    "precision": 2
+  },
+  "equipment": {
+    "maintenance_interval": 100,
+    "max_devices": 100
+  }
+}

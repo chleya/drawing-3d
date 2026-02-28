@@ -1,0 +1,154 @@
+{
+  "project": {
+    "name": "351 Provincial Road",
+    "code": "351-2024",
+    "created": "2026-02-24T15:34:58.652384",
+    "version": "1.0"
+  },
+  "metadata": {
+    "total_length_km": 0,
+    "stations": {
+      "K5+800": {
+        "position_km": 5.8,
+        "layers": {
+          "surface": {
+            "material": "AC-13",
+            "thickness_mm": 40,
+            "compaction": 98
+          },
+          "base": {
+            "material": "CTSM",
+            "thickness_mm": 180
+          },
+          "subbase": {
+            "material": "GAB",
+            "thickness_mm": 300
+          }
+        },
+        "quality": [
+          {
+            "item": "compaction",
+            "value": 98,
+            "unit": "%",
+            "status": "ok",
+            "date": "2026-02-24"
+          },
+          {
+            "item": "temperature",
+            "value": 145,
+            "unit": "C",
+            "status": "ok",
+            "date": "2026-02-24"
+          }
+        ],
+        "photos": [],
+        "documents": [],
+        "notes": ""
+      },
+      "K6+000": {
+        "position_km": 6.0,
+        "layers": {
+          "surface": {
+            "material": "AC-16",
+            "thickness_mm": 50,
+            "compaction": 98
+          },
+          "base": {
+            "material": "CTSM",
+            "thickness_mm": 200
+          }
+        },
+        "quality": [
+          {
+            "item": "compaction",
+            "value": 98,
+            "unit": "%",
+            "status": "ok",
+            "date": "2026-02-24"
+          }
+        ],
+        "photos": [],
+        "documents": [],
+        "notes": ""
+      },
+      "K6+500": {
+        "position_km": 6.5,
+        "layers": {
+          "surface": {
+            "material": "AC-16",
+            "thickness_mm": 50
+          },
+          "base": {
+            "material": "CTSM",
+            "thickness_mm": 180
+          }
+        },
+        "quality": [
+          {
+            "item": "compaction",
+            "value": 97,
+            "unit": "%",
+            "status": "warning",
+            "date": "2026-02-24"
+          }
+        ],
+        "photos": [],
+        "documents": [],
+        "notes": ""
+      }
+    },
+    "sections": [
+      {
+        "start": "K0+000",
+        "end": "K1+000",
+        "status": "completed",
+        "progress_percent": 100,
+        "start_date": null,
+        "end_date": null
+      },
+      {
+        "start": "K1+000",
+        "end": "K2+000",
+        "status": "completed",
+        "progress_percent": 100,
+        "start_date": null,
+        "end_date": null
+      },
+      {
+        "start": "K2+000",
+        "end": "K3+000",
+        "status": "completed",
+        "progress_percent": 100,
+        "start_date": null,
+        "end_date": null
+      },
+      {
+        "start": "K3+000",
+        "end": "K4+000",
+        "status": "in_progress",
+        "progress_percent": 70,
+        "start_date": null,
+        "end_date": null
+      },
+      {
+        "start": "K4+000",
+        "end": "K5+000",
+        "status": "in_progress",
+        "progress_percent": 40,
+        "start_date": null,
+        "end_date": null
+      },
+      {
+        "start": "K5+000",
+        "end": "K6+000",
+        "status": "not_started",
+        "progress_percent": 0,
+        "start_date": null,
+        "end_date": null
+      }
+    ],
+    "materials": [],
+    "documents": [],
+    "team": []
+  }
+}
