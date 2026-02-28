@@ -4,9 +4,10 @@ Drawing 3D - Web Interface
 Web界面
 """
 
-from flask import Flask, render_template_string, request, jsonify
+from flask import Flask, render_template_string, request, jsonify, Response
 import os
 import json
+import cv2
 from datetime import datetime
 
 app = Flask(__name__)
@@ -16,6 +17,21 @@ from enhanced_core import Drawing3D, WeatherSystem, CostSystem, EquipmentSystem,
 
 # 初始化系统
 system = Drawing3D()
+
+# YOLO检测器
+yolo_detector = None
+
+def get_yolo():
+    """获取YOLO检测器"""
+    global yolo_detector
+    if yolo_detector is None:
+        from yolo_detector import YOLODetector
+        yolo_detector = YOLODetector()
+        yolo_detector.load_model()
+    return yolo_detector
+
+# 摄像头配置
+CAMERA_URL = 0  # 默认使用摄像头0
 
 # HTML模板
 HTML_TEMPLATE = '''
@@ -390,6 +406,76 @@ def api_search():
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
+
+# ==================== Real-time Camera Feed ====================
+
+@app.route('/video_feed')
+def video_feed():
+    """实时摄像头流 + YOLO检测"""
+    def gen_frames():
+        camera_url = CAMERA_URL
+        cap = cv2.VideoCapture(camera_url)
+        
+        if not cap.isOpened():
+            # 发送错误帧
+            error_frame = np.zeros((480, 640, 3), dtype=np.uint8)
+            cv2.putText(error_frame, "Camera not available", (150, 240), 
+                       cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+            ret, buffer = cv2.imencode('.jpg', error_frame)
+            yield (b'--frame\r\nContent-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
+            return
+        
+        detector = get_yolo()
+        
+        while True:
+            success, frame = cap.read()
+            if not success:
+                break
+            
+            # YOLO实时检测
+            try:
+                detections = detector.detect_frame(frame)
+                annotated = detector.draw_detections(frame, detections)
+            except:
+                annotated = frame
+            
+            # 转为JPEG流
+            ret, buffer = cv2.imencode('.jpg', annotated)
+            frame_bytes = buffer.tobytes()
+            yield (b'--frame\r\nContent-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
+        
+        cap.release()
+    
+    return Response(gen_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
+
+
+@app.route('/api/start_camera', methods=['POST'])
+def start_camera():
+    """启动摄像头检测"""
+    data = request.json
+    camera_url = data.get('camera_url', CAMERA_URL)
+    
+    # 可以在这里添加后台处理逻辑
+    return jsonify({
+        "status": "camera_started",
+        "url": str(camera_url),
+        "video_feed": "/video_feed"
+    })
+
+
+@app.route('/api/camera/stats')
+def camera_stats():
+    """获取摄像头统计"""
+    detector = get_yolo()
+    stats = detector.get_stats()
+    return jsonify({
+        'status': 'ok',
+        'camera_url': str(CAMERA_URL),
+        'detector_stats': stats
+    })
+
+
+import numpy as np
 
 def run_server(host='0.0.0.0', port=5000):
     """运行服务器"""
