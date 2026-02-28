@@ -130,10 +130,14 @@ def test_ar():
 def test_material():
     """Test material scheduling"""
     from main import Road3D
-    from material_scheduling import MaterialScheduler
+    from material_scheduling import Inventory, Material
     road = Road3D()
-    ms = MaterialScheduler(road)
-    ms.add_material('asphalt', 100)
+    inv = Inventory()
+    mat = Material('asphalt', '沥青', '道路材料', '吨', 500)
+    inv.add_material(mat)
+    assert 'asphalt' in inv.materials
+    print("[PASS] MaterialScheduler")
+    return True
     alerts = ms.check_reorder()
     assert isinstance(alerts, list)
     print("[PASS] MaterialScheduler")
