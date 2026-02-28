@@ -174,10 +174,55 @@ HTML_TEMPLATE = '''
                     <span class="status-item {{'active' if ai_qa else ''}}">AI: {{'✓' if ai_qa else '✗'}}</span>
                 </div>
             </div>
+            
+            <!-- 实时视频监控 -->
+            <div class="card" style="grid-column: 1 / -1;">
+                <h2>📹 实时视频监控 (YOLO)</h2>
+                <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                    <div style="flex: 1; min-width: 400px;">
+                        <img src="/video_feed" style="width: 100%; border-radius: 10px; border: 2px solid #667eea;">
+                    </div>
+                    <div style="flex: 0 0 250px;">
+                        <h3>📊 实时统计</h3>
+                        <div id="cameraStats" style="background: #f5f5f5; padding: 15px; border-radius: 10px; margin-top: 10px;">
+                            <p>人员检测: <span id="personCount" style="font-size: 24px; color: #667eea; font-weight: bold;">0</span></p>
+                            <p>总检测数: <span id="detectionCount" style="font-size: 24px; color: #764ba2; font-weight: bold;">0</span></p>
+                            <p>帧数: <span id="frameCount">0</span></p>
+                        </div>
+                        <div id="alertBox" style="background: #ff4444; color: white; padding: 15px; border-radius: 10px; margin-top: 15px; display: none;">
+                            <h4>⚠️ 安全提醒</h4>
+                            <p id="alertMsg">检测到人员，请确认安全帽佩戴！</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
     
     <script>
+        // 定时获取摄像头统计
+        setInterval(function() {
+            fetch('/api/camera/stats')
+                .then(r => r.json())
+                .then(d => {
+                    if (d.status === 'ok') {
+                        const stats = d.detector_stats;
+                        document.getElementById('personCount').textContent = stats.persons || 0;
+                        document.getElementById('detectionCount').textContent = stats.total_detections || 0;
+                        document.getElementById('frameCount').textContent = stats.total_frames || 0;
+                        
+                        // 显示报警
+                        const alertBox = document.getElementById('alertBox');
+                        if (stats.persons > 0) {
+                            alertBox.style.display = 'block';
+                            console.log('⚠️ 检测到工人，请确认安全帽');
+                        } else {
+                            alertBox.style.display = 'none';
+                        }
+                    }
+                });
+        }, 1000);
+        
         function getWeather() {
             const location = document.getElementById('weatherLocation').value;
             fetch('/api/weather?location=' + encodeURIComponent(location))
