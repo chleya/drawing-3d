@@ -8,7 +8,11 @@ Features:
 - Auto defect detection
 - Real-time alerts
 - Quality history tracking
+- YOLO safety detection (helmet, vest, etc.)
 """
+
+import os
+from datetime import datetime
 
 
 class QualityDetector:
@@ -243,3 +247,109 @@ if __name__ == "__main__":
     
     # Full report
     print(detector.quality_report())
+
+
+# ==================== YOLO 安全检测集成 ====================
+
+class SafetyYOLO:
+    """YOLO安全检测集成"""
+    
+    def __init__(self, detector=None):
+        self.detector = detector
+        self.yolo = None
+        
+        # 检测统计
+        self.detections = []
+    
+    def init_yolo(self, model_path='yolov8n.pt'):
+        """初始化YOLO"""
+        try:
+            from yolo_detector import YOLODetector
+            self.yolo = YOLODetector(model_path)
+            self.yolo.load_model()
+            return True
+        except Exception as e:
+            print(f"YOLO init failed: {e}")
+            return False
+    
+    def detect_from_image(self, image_path):
+        """从图像检测"""
+        import cv2
+        
+        if not self.yolo:
+            self.init_yolo()
+        
+        if self.yolo is None:
+            return {'error': 'YOLO not initialized'}
+        
+        # 读取图像
+        frame = cv2.imread(image_path)
+        if frame is None:
+            return {'error': f'Cannot read image: {image_path}'}
+        
+        # 检测
+        results = self.yolo.detect_frame(frame)
+        
+        # 记录
+        self.detections.append({
+            'source': image_path,
+            'results': results,
+            'count': len(results),
+            'timestamp': datetime.now().isoformat()
+        })
+        
+        return {
+            'image_path': image_path,
+            'detections': results,
+            'total': len(results),
+            'persons': len([r for r in results if r['class_name'] == 'person']),
+        }
+    
+    def detect_from_video(self, video_path, max_frames=100):
+        """从视频检测"""
+        if not self.yolo:
+            self.init_yolo()
+        
+        if self.yolo is None:
+            return {'error': 'YOLO not initialized'}
+        
+        # 处理视频
+        results = self.yolo.process_video(video_path, max_frames=max_frames)
+        return results
+    
+    def get_safety_stats(self):
+        """获取安全统计"""
+        if not self.detections:
+            return {'total': 0, 'persons': 0}
+        
+        total_persons = sum(d.get('persons', 0) for d in self.detections)
+        
+        return {
+            'total_images': len(self.detections),
+            'total_persons': total_persons,
+            'avg_per_image': total_persons / len(self.detections) if self.detections else 0,
+        }
+
+
+# 便捷函数
+def quick_safety_check(image_path):
+    """快速安全检查"""
+    safety = SafetyYOLO()
+    return safety.detect_from_image(image_path)
+
+
+# ==================== 测试 ====================
+
+if __name__ == "__main__":
+    print("Testing SafetyYOLO...")
+    safety = SafetyYOLO()
+    
+    # 测试初始化
+    if safety.init_yolo():
+        print("YOLO initialized!")
+        
+        # 统计
+        stats = safety.get_safety_stats()
+        print(f"Stats: {stats}")
+    else:
+        print("YOLO not available. Run: pip install ultralytics")
