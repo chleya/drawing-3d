@@ -291,6 +291,67 @@ def api_ai_ask():
     return jsonify({'answer': answer})
 
 
+# ==================== YOLO 安全检测API ====================
+
+@app.route('/api/safety', methods=['POST'])
+def api_safety():
+    """YOLO安全检测API"""
+    data = request.json
+    source = data.get('source', 'data/test_video.mp4')
+    is_video = data.get('is_video', False)
+    
+    try:
+        # 导入YOLO检测器
+        from yolo_detector import YOLODetector
+        
+        detector = YOLODetector()
+        detector.load_model()
+        
+        if is_video:
+            # 视频检测
+            result = detector.process_video(source, max_frames=100)
+        else:
+            # 图像检测
+            import cv2
+            frame = cv2.imread(source)
+            if frame is None:
+                return jsonify({'error': f'Cannot read image: {source}'}), 400
+            
+            detections = detector.detect_frame(frame)
+            
+            # 统计
+            class_counts = {}
+            for det in detections:
+                cls = det.get('class_name', 'unknown')
+                class_counts[cls] = class_counts.get(cls, 0) + 1
+            
+            result = {
+                'source': source,
+                'detections': detections,
+                'count': len(detections),
+                'class_counts': class_counts,
+                'persons': class_counts.get('person', 0),
+            }
+        
+        return jsonify({
+            'status': 'success',
+            'result': result,
+            'stats': detector.get_stats()
+        })
+    
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+@app.route('/api/safety/stats')
+def api_safety_stats():
+    """获取安全检测统计"""
+    return jsonify({
+        'status': 'ok',
+        'message': 'YOLO detector ready'
+    })
+
+
 def run_server(host='0.0.0.0', port=5000):
     """运行服务器"""
     print(f"\n{'='*50}")
