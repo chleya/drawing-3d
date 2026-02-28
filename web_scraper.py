@@ -3,14 +3,14 @@
 Firecrawl Web Scraper - 网络爬虫集成
 用于采集安全法规、竞品分析、知识获取
 
-API Key: fc-2c1cdfc9ed354caeaa7182bec1e79a65
+API Key: [已隐藏]
 """
 
 import os
 from firecrawl import FirecrawlApp
 
-# API Key
-API_KEY = "fc-2c1cdfc9ed354caeaa7182bec1e79a65"
+# API Key - 从环境变量获取
+API_KEY = os.environ.get('FIRECRAWL_API_KEY', '')
 
 
 class WebScraper:
