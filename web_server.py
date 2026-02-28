@@ -352,6 +352,45 @@ def api_safety_stats():
     })
 
 
+# ==================== Firecrawl Web Scraper API ====================
+
+@app.route('/api/scrape', methods=['POST'])
+def api_scrape():
+    """网页爬取API"""
+    data = request.json
+    url = data.get('url', '')
+    
+    if not url:
+        return jsonify({'error': 'URL is required'}), 400
+    
+    try:
+        from web_scraper import WebScraper
+        scraper = WebScraper()
+        result = scraper.scrape(url)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+@app.route('/api/search', methods=['POST'])
+def api_search():
+    """网页搜索API"""
+    data = request.json
+    query = data.get('query', '')
+    limit = data.get('limit', 5)
+    
+    if not query:
+        return jsonify({'error': 'Query is required'}), 400
+    
+    try:
+        from web_scraper import WebScraper
+        scraper = WebScraper()
+        result = scraper.search(query, limit=limit)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
 def run_server(host='0.0.0.0', port=5000):
     """运行服务器"""
     print(f"\n{'='*50}")
