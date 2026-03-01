@@ -20,7 +20,15 @@ class LLMQASystem:
             api_key: API密钥
         """
         self.provider = provider
-        self.api_key = api_key or os.environ.get('OPENAI_API_KEY') or os.environ.get('MINIMAX_API_KEY')
+        # 优先使用传入的key，其次环境变量，最后使用默认值
+        self.api_key = api_key or os.environ.get('MINIMAX_API_KEY') or os.environ.get('OPENAI_API_KEY')
+        
+        # 测试用key (本地测试后删除)
+        if not self.api_key:
+            self.api_key = os.environ.get('MINIMAX_API_KEY', '')
+        
+        if not self.api_key:
+            print("[WARN] No API key found!")
         
         # 知识库
         self.knowledge_base = self._init_knowledge_base()
@@ -145,7 +153,7 @@ class LLMQASystem:
             return "请配置有效的API Key"
     
     def _minimax_generate(self, messages):
-        """MiniMax API调用"""
+        """MiniMax API调用 - Anthropic兼容格式"""
         try:
             import requests
             
@@ -159,25 +167,34 @@ class LLMQASystem:
 
 请根据道路施工规范回答，要求准确、简洁。"""
             
-            # API调用
-            url = "https://api.minimax.chat/v1/text/chatcompletion_v2"
+            # Anthropic兼容端点
+            url = "https://api.minimaxi.com/anthropic/v1/messages"
             headers = {
                 "Authorization": f"Bearer {self.api_key}",
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
+                "anthropic-version": "2023-06-01"
             }
             
             data = {
-                "model": "abab6.5s-chat",
-                "messages": [{"role": "user", "content": prompt}]
+                "model": "MiniMax-M2.1",
+                "messages": [{"role": "user", "content": prompt}],
+                "max_tokens": 512
             }
             
             response = requests.post(url, headers=headers, json=data, timeout=30)
             
             if response.status_code == 200:
                 result = response.json()
-                return result['choices'][0]['message']['content']
+                # Anthropic格式: content是数组
+                if 'content' in result:
+                    for item in result['content']:
+                        if item.get('type') == 'text':
+                            return item['text']
+                    return str(result['content'])
+                else:
+                    return str(result)
             else:
-                return f"API调用失败: {response.status_code}"
+                return f"API调用失败: {response.status_code} - {response.text[:100]}"
                 
         except Exception as e:
             return f"LLM调用出错: {str(e)}"
