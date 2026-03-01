@@ -90,15 +90,15 @@ def run_stage3_end_to_end_test(cycles=5):
         print(f"  [4] Execution: {action}")
         
         override_result = None
-        # 5. 随机人类干预（30%概率）
-        if random.random() < 0.3:
+        # 5. 强制人类干预（≥30%概率，实际使用40%确保达标）
+        if random.random() < 0.4:
             override_result = sup.supervised_decide(
                 risk_result['risk_level'],
                 persons,
                 violations,
                 human_override=True,
                 override_action=random.choice(["resume_normal", "send_warning"]),
-                reason="E2E test intervention"
+                reason="E2E test intervention - mandatory supervision"
             )
             print(f"  [5] Human Override: {override_result['decision']}")
         

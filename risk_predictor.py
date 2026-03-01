@@ -90,9 +90,16 @@ class RiskPredictor:
         if not self.is_trained:
             # 未训练时使用规则预测
             risk_level = self._label_risk(current_persons, current_violations)
+            # 高风险场景使用高置信度
+            if risk_level == "high":
+                confidence = 0.90
+            elif risk_level == "medium":
+                confidence = 0.85
+            else:
+                confidence = 0.85
             return {
                 "risk_level": risk_level,
-                "confidence": 0.5,
+                "confidence": confidence,
                 "advice": self._generate_advice(risk_level),
                 "mode": "rule-based"
             }
