@@ -472,6 +472,13 @@ def video_feed():
         
         detector = get_yolo()
         
+        # 风险预测集成
+        try:
+            from risk_integration import get_integrator
+            integrator = get_integrator()
+        except:
+            integrator = None
+        
         while True:
             success, frame = cap.read()
             if not success:
@@ -481,7 +488,12 @@ def video_feed():
             try:
                 detections = detector.detect_frame(frame)
                 annotated = detector.draw_detections(frame, detections)
-            except:
+                
+                # 风险预测叠加
+                if integrator is not None:
+                    result = integrator.process_frame(frame)
+                    annotated = integrator.annotate_frame(annotated, result)
+            except Exception as e:
                 annotated = frame
             
             # 转为JPEG流
