@@ -10,6 +10,9 @@ from datetime import datetime
 import json
 import os
 
+# 导入边缘过滤模块
+from edge_filter import EdgeFilter
+
 
 class EdgeNode:
     """边缘计算节点"""
@@ -19,6 +22,9 @@ class EdgeNode:
         self.detector = YOLODetector()
         self.detector.load_model()
         self.log_file = log_file
+        
+        # 初始化边缘过滤
+        self.edge_filter = EdgeFilter()
         
         # 确保目录存在
         os.makedirs(os.path.dirname(log_file) if os.path.dirname(log_file) else "data", exist_ok=True)
@@ -35,7 +41,7 @@ class EdgeNode:
         alert_count = 0
         
         print(f"\n{'='*50}")
-        print(f"边缘节点启动 - Camera {self.camera_url}")
+        print(f"Edge Node Started - Camera {self.camera_url}")
         print(f"{'='*50}\n")
         
         while frame_count < max_frames:
@@ -49,28 +55,25 @@ class EdgeNode:
             # 统计人数
             persons = len([d for d in detections if d['class_name'] == 'person'])
             
-            # 边缘过滤：仅异常帧记录
+            # 边缘过滤：使用EdgeFilter进行持久化
             if persons > 0:
                 alert_count += 1
                 
-                log_entry = {
-                    "timestamp": datetime.now().isoformat(),
-                    "camera": self.camera_url,
-                    "persons": persons,
-                    "detections": len(detections),
-                    "alert": True
-                }
+                # 使用EdgeFilter保存到SQLite
+                self.edge_filter.filter_and_save(
+                    camera_id=self.camera_url,
+                    detections=detections,
+                    frame=frame
+                )
                 
-                # 写入日志
-                with open(self.log_file, "a", encoding="utf-8") as f:
-                    f.write(json.dumps(log_entry, ensure_ascii=False) + "\n")
-                
-                print(f"⚠️ 边缘节点报警: 检测到 {persons} 人 (帧 {frame_count})")
+                print(f"[ALERT] Edge node detected {persons} persons (frame {frame_count})")
             
             frame_count += 1
             
             if frame_count % 30 == 0:
-                print(f"边缘节点已处理 {frame_count} 帧, 报警 {alert_count} 次")
+                # 显示统计
+                stats = self.edge_filter.get_stats()
+                print(f"边缘节点已处理 {frame_count} 帧, 报警 {alert_count} 次 | DB: {stats}")
         
         cap.release()
         print(f"\n{'='*50}")
