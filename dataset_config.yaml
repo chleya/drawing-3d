@@ -1,0 +1,33 @@
+# helmet_dataset.yaml
+# 安全帽检测数据集配置
+
+# 数据集根目录
+path: F:/helmet_dataset
+
+# 训练集和验证集
+train: images/train
+val: images/val
+
+# 类别数
+nc: 3
+
+# 类别名称
+names:
+  0: person      # 人员
+  1: helmet      # 安全帽
+  2: no-helmet  # 未戴安全帽
+
+# 数据增强（可选）
+augmentation:
+  hsv_h: 0.015  # 色调增强
+  hsv_s: 0.7    # 饱和度增强
+  hsv_v: 0.4    # 亮度增强
+  degrees: 0.0  # 旋转
+  translate: 0.1 # 平移
+  scale: 0.5    # 缩放
+  shear: 0.0    # 剪切
+  perspective: 0.0 # 透视
+  flipud: 0.0   # 上下翻转
+  fliplr: 0.5   # 左右翻转
+  mosaic: 1.0   # Mosaic增强
+  mixup: 0.0    # MixUp增强
