@@ -2,6 +2,22 @@
 
 Road Engineering Management System (Light Version)
 
+## 阶段1 完成 (2026-03-01)
+
+**全视之眼 - 感知基础设施** ✅
+
+### Demo视频
+
+> 阶段1最终Demo录制中...
+> 视频将展示：地面实时监控 + 无人机视角 + 全链路数据流
+
+### 访问
+
+- **地面视图**: http://localhost:5000
+- **无人机视图**: http://localhost:5000/drone
+
+---
+
 ## Features
 
 - **Weather System**: Real-time weather, construction impact analysis
