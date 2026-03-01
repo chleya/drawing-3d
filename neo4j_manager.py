@@ -1,298 +1,220 @@
 # -*- coding: utf-8 -*-
 """
-Neo4j图数据库管理器 - Neo4j Manager
-提供连接池、查询、备份等功能
+语义化知识图谱 - Neo4j管理器
+基于graph_db_manager.py，支持Neo4j和文件存储
 """
 
 import os
+import json
 from datetime import datetime
+from typing import List, Dict, Any, Optional
+
+# 导入图数据库管理器
+from graph_db_manager import GraphDBManager
 
 
-class Neo4jManager:
-    """Neo4j图数据库管理器"""
+class Neo4jKnowledgeGraph:
+    """知识图谱管理器 - 支持Neo4j和本地存储"""
     
-    def __init__(self, uri=None, username=None, password=None):
-        """初始化
+    def __init__(self, uri="bolt://localhost:7687", user="neo4j", password=None,
+                 storage_path="data/knowledge_graph.json"):
+        """
+        初始化知识图谱
         
         Args:
-            uri: Neo4j URI (如 neo4j://localhost:7687)
-            username: 用户名
-            password: 密码
+            uri: Neo4j连接URI
+            user: Neo4j用户名
+            password: Neo4j密码
+            storage_path: 本地文件存储路径
         """
-        # 从环境变量或参数获取
-        self.uri = uri or os.environ.get('NEO4J_URI', 'bolt://localhost:7687')
-        self.username = username or os.environ.get('NEO4J_USER', 'neo4j')
-        self.password = password or os.environ.get('NEO4J_PASSWORD', 'password')
+        # 初始化图数据库
+        self.db = GraphDBManager(
+            uri=uri,
+            user=user,
+            password=password,
+            storage_path=storage_path
+        )
         
-        self.driver = None
-        self.connected = False
+        self.connected = self.db.connected
+        self.storage_mode = "neo4j" if self.db.connected else "file"
         
-        # 尝试连接
-        self.connect()
+        print(f"[INFO] Knowledge Graph initialized in {self.storage_mode} mode")
     
-    def connect(self):
-        """连接Neo4j"""
-        try:
-            from neo4j import GraphDatabase
-            self.driver = GraphDatabase.driver(
-                self.uri,
-                auth=(self.username, self.password)
+    # ========== 道路工程实体 ==========
+    
+    def add_road_structure(self, stake: str, structure: Dict) -> str:
+        """添加道路结构"""
+        properties = {
+            "stake": stake,
+            "type": "road_structure",
+            "surface": structure.get("surface", ""),
+            "base": structure.get("base", ""),
+            "subbase": structure.get("subbase", ""),
+            "total_thickness": structure.get("total_thickness", ""),
+            "timestamp": datetime.now().isoformat()
+        }
+        return self.db.create_node("RoadStructure", properties)
+    
+    def add_material(self, name: str, properties: Dict) -> str:
+        """添加材料"""
+        props = {
+            "name": name,
+            "category": properties.get("category", ""),
+            "spec": properties.get("spec", ""),
+            "thickness": properties.get("thickness", ""),
+            "standard": properties.get("standard", ""),
+            "timestamp": datetime.now().isoformat()
+        }
+        return self.db.create_node("Material", props)
+    
+    def add_construction_standard(self, name: str, requirements: Dict) -> str:
+        """添加施工规范"""
+        props = {
+            "name": name,
+            "temperature": requirements.get("temperature", ""),
+            "compaction": requirements.get("compaction", ""),
+            "standard": requirements.get("standard", ""),
+            "timestamp": datetime.now().isoformat()
+        }
+        return self.db.create_node("ConstructionStandard", props)
+    
+    # ========== 关系创建 ==========
+    
+    def link_stake_to_material(self, stake: str, material: str, rel_type="USES"):
+        """连接桩号到材料"""
+        stake_node = self.db.find_node("RoadStructure", "stake", stake)
+        material_node = self.db.find_node("Material", "name", material)
+        
+        if stake_node and material_node:
+            self.db.create_relationship(
+                stake_node[0]['id'],
+                material_node[0]['id'],
+                rel_type
             )
-            # 测试连接
-            with self.driver.session() as session:
-                result = session.run("RETURN 1 as n")
-                result.single()
-            self.connected = True
-            print(f"[OK] Connected to Neo4j: {self.uri}")
-            return True
-        except Exception as e:
-            print(f"[WARN] Neo4j connection failed: {e}")
-            print(f"[INFO] Using simulation mode instead")
-            self.connected = False
-            return False
+    
+    # ========== 查询 ==========
+    
+    def query_by_stake(self, stake: str) -> List[Dict]:
+        """按桩号查询"""
+        return self.db.find_node("RoadStructure", "stake", stake)
+    
+    def query_by_material(self, material_name: str) -> List[Dict]:
+        """按材料查询"""
+        return self.db.find_node("Material", "name", material_name)
+    
+    def get_all_structures(self) -> List[Dict]:
+        """获取所有道路结构"""
+        return self.db.find_nodes_by_label("RoadStructure")
+    
+    def get_all_materials(self) -> List[Dict]:
+        """获取所有材料"""
+        return self.db.find_nodes_by_label("Material")
+    
+    # ========== 统计 ==========
+    
+    def get_stats(self) -> Dict:
+        """获取统计信息"""
+        return self.db.get_stats()
+    
+    # ========== 同步方法 ==========
+    
+    def sync_from_knowledge_graph(self, kg):
+        """从内存知识图谱同步数据"""
+        nodes_data = {
+            "nodes": [],
+            "relationships": []
+        }
+        
+        # 同步节点
+        for node_id, node_data in kg.nodes.items():
+            label = node_data.get("type", "Concept")
+            nodes_data["nodes"].append({
+                "label": label,
+                "properties": {
+                    "id": node_id,
+                    "name": node_data.get("name", ""),
+                    "data": json.dumps(node_data)
+                }
+            })
+        
+        # 同步关系
+        for rel in kg.relationships:
+            nodes_data["relationships"].append({
+                "from": rel.get("from"),
+                "to": rel.get("to"),
+                "type": rel.get("type", "RELATED")
+            })
+        
+        self.db.import_from_dict(nodes_data)
     
     def close(self):
         """关闭连接"""
-        if self.driver:
-            self.driver.close()
-            print("[OK] Neo4j connection closed")
-    
-    # ========== 图谱操作 ==========
-    
-    def create_node(self, label, properties):
-        """创建节点
-        
-        Args:
-            label: 节点标签
-            properties: 节点属性
-        
-        Returns:
-            dict: 创建的节点
-        """
-        if not self.connected:
-            return {"status": "simulation_mode"}
-        
-        query = f"CREATE (n:{label} $props) RETURN n"
-        
-        with self.driver.session() as session:
-            result = session.run(query, props=properties)
-            record = result.single()
-            return dict(record['n'])
-    
-    def create_relationship(self, from_id, to_id, rel_type, properties=None):
-        """创建关系
-        
-        Args:
-            from_id: 起始节点ID
-            to_id: 目标节点ID
-            rel_type: 关系类型
-            properties: 关系属性
-        """
-        if not self.connected:
-            return {"status": "simulation_mode"}
-        
-        props = properties or {}
-        
-        query = f"""
-        MATCH (a), (b)
-        WHERE a.id = $from_id AND b.id = $to_id
-        CREATE (a)-[r:{rel_type} $props]->(b)
-        RETURN r
-        """
-        
-        with self.driver.session() as session:
-            result = session.run(
-                query,
-                from_id=from_id,
-                to_id=to_id,
-                props=props
-            )
-            return result.single()
-    
-    def query(self, cypher):
-        """执行Cypher查询
-        
-        Args:
-            cypher: Cypher语句
-        
-        Returns:
-            list: 查询结果
-        """
-        if not self.connected:
-            return []
-        
-        with self.driver.session() as session:
-            result = session.run(cypher)
-            return [dict(record) for record in result]
-    
-    def query_by_stake(self, stake):
-        """按桩号查询
-        
-        Args:
-            stake: 里程桩号
-        
-        Returns:
-            list: 相关节点
-        """
-        if not self.connected:
-            return []
-        
-        cypher = f"""
-        MATCH (l:Location {{stake: '{stake}'}})<-[:LOCATED_AT]-(e)
-        RETURN e
-        """
-        
-        return self.query(cypher)
-    
-    def query_by_keyword(self, keyword):
-        """关键词查询"""
-        if not self.connected:
-            return []
-        
-        cypher = f"""
-        MATCH (n)
-        WHERE n.name CONTAINS '{keyword}' OR n.type CONTAINS '{keyword}'
-        RETURN n
-        """
-        
-        return self.query(cypher)
-    
-    # ========== 批量操作 ==========
-    
-    def batch_import(self, nodes, relationships):
-        """批量导入
-        
-        Args:
-            nodes: 节点列表
-            relationships: 关系列表
-        """
-        if not self.connected:
-            print(f"[SIM] Would import {len(nodes)} nodes, {len(relationships)} relationships")
-            return
-        
-        # 批量创建节点
-        for node in nodes:
-            label = node.get('label', 'Entity')
-            props = {k: v for k, v in node.items() if k != 'label'}
-            self.create_node(label, props)
-        
-        # 批量创建关系
-        for rel in relationships:
-            self.create_relationship(
-                rel['from'],
-                rel['to'],
-                rel['type'],
-                rel.get('properties')
-            )
-        
-        print(f"[OK] Imported {len(nodes)} nodes, {len(relationships)} relationships")
-    
-    # ========== 数据库管理 ==========
-    
-    def get_stats(self):
-        """获取数据库统计"""
-        if not self.connected:
-            return {"mode": "simulation"}
-        
-        stats = {}
-        
-        # 节点数量
-        result = self.query("MATCH (n) RETURN count(n) as count")
-        stats['nodes'] = result[0]['count'] if result else 0
-        
-        # 关系数量
-        result = self.query("MATCH ()-[r]->() RETURN count(r) as count")
-        stats['relationships'] = result[0]['count'] if result else 0
-        
-        # 标签分布
-        result = self.query("""
-            MATCH (n)
-            RETURN labels(n)[0] as label, count(*) as count
-            ORDER BY count DESC
-        """)
-        stats['labels'] = {r['label']: r['count'] for r in result}
-        
-        return stats
-    
-    def clear_all(self):
-        """清空数据库"""
-        if not self.connected:
-            print("[SIM] Would clear all data")
-            return
-        
-        self.query("MATCH (n) DETACH DELETE n")
-        print("[OK] Database cleared")
-    
-    def export_json(self, filepath):
-        """导出JSON"""
-        if not self.connected:
-            print("[SIM] Would export to file")
-            return
-        
-        # 导出所有节点
-        nodes = self.query("MATCH (n) RETURN n")
-        
-        # 导出所有关系
-        rels = self.query("MATCH (a)-[r]->(b) RETURN a.id as from, b.id as to, type(r) as type")
-        
-        import json
-        data = {
-            'nodes': nodes,
-            'relationships': rels,
-            'exported_at': datetime.now().isoformat()
-        }
-        
-        with open(filepath, 'w', encoding='utf-8') as f:
-            json.dump(data, f, indent=2, ensure_ascii=False)
-        
-        print(f"[OK] Exported to {filepath}")
+        self.db.close()
 
 
-# ========== 快速开始 ==========
+# ========== 创建示例知识图谱 ==========
 
-def quick_start(uri=None, user=None, password=None):
-    """快速启动Neo4j连接
+def create_sample_kg():
+    """创建示例知识图谱"""
+    kg = Neo4jKnowledgeGraph(storage_path="data/sample_kg.json")
     
-    Args:
-        uri: Neo4j URI
-        user: 用户名
-        password: 密码
+    # 添加道路结构
+    print("\n[1] Adding road structures...")
+    kg.add_road_structure("K5+800", {
+        "surface": "40mm AC-13C",
+        "base": "60mm AC-20",
+        "subbase": "36cm"
+    })
+    kg.add_road_structure("K6+200", {
+        "surface": "40mm AC-13C",
+        "base": "60mm AC-20",
+        "subbase": "80mm AC-25",
+        "total_thickness": "36cm"
+    })
     
-    Returns:
-        Neo4jManager实例
-    """
-    manager = Neo4jManager(uri, user, password)
+    # 添加材料
+    print("[2] Adding materials...")
+    kg.add_material("AC-13C", {
+        "category": "沥青混凝土",
+        "spec": "上面层",
+        "thickness": "40mm"
+    })
+    kg.add_material("AC-20", {
+        "category": "沥青混凝土", 
+        "spec": "中面层",
+        "thickness": "60mm"
+    })
     
-    if manager.connected:
-        print(f"[OK] Neo4j connected: {manager.uri}")
-    else:
-        print("[INFO] Running in simulation mode")
+    # 添加施工规范
+    print("[3] Adding construction standards...")
+    kg.add_construction_standard("SMA-13", {
+        "temperature": "160-180℃",
+        "compaction": "26%",
+        "standard": "JTG F40-2004"
+    })
     
-    return manager
+    # 统计
+    print("\n[4] Statistics:")
+    stats = kg.get_stats()
+    print(f"  Nodes: {stats.get('total_nodes', 0)}")
+    print(f"  Relationships: {stats.get('total_relationships', 0)}")
+    
+    return kg
 
 
 # ========== 测试 ==========
 
 if __name__ == "__main__":
     print("="*50)
-    print("Neo4j Manager Test")
+    print("Neo4j Knowledge Graph Test")
     print("="*50)
     
-    # 尝试连接
-    manager = quick_start()
+    kg = create_sample_kg()
     
-    # 获取统计
-    print("\n[Stats]")
-    stats = manager.get_stats()
-    print(f"Mode: {stats.get('mode', 'neo4j')}")
-    if 'nodes' in stats:
-        print(f"Nodes: {stats['nodes']}")
-        print(f"Relationships: {stats['relationships']}")
-        print(f"Labels: {stats.get('labels', {})}")
+    # 查询
+    print("\n[Query] K5+800:")
+    result = kg.query_by_stake("K5+800")
+    print(result)
     
-    # 关闭
-    manager.close()
-    
-    print("\n" + "="*50)
-    print("Test Complete")
-    print("="*50)
+    print("\n[OK] Test complete!")
+    kg.close()

@@ -12,8 +12,9 @@ from datetime import datetime
 from blueprint_knowledge_graph import BlueprintKnowledgeGraph, create_sample_knowledge_graph
 from blueprint_qa import BlueprintQA
 from llm_qa import LLMQASystem, SemanticQA
-from neo4j_manager import Neo4jManager
+from neo4j_manager import Neo4jKnowledgeGraph
 from spatial_semantic_mapper import SpatialSemanticMapper
+from graph_db_manager import GraphDBManager
 
 app = Flask(__name__)
 
@@ -33,19 +34,23 @@ def init_services():
     print("Initializing Semantic Services...")
     print("="*50)
     
-    # 1. 尝试连接Neo4j
-    neo4j = Neo4jManager()
+    # 1. 尝试连接图数据库 (Neo4j或文件存储)
+    print("\n[0] Connecting to Graph Database...")
+    neo4j = Neo4jKnowledgeGraph(storage_path="data/semantic_graph.json")
+    graph_db = neo4j.db
+    
+    if neo4j.connected:
+        print("[OK] Connected to Neo4j")
+    else:
+        print("[OK] Using file storage mode")
     
     # 2. 创建知识图谱
     print("\n[1] Creating Knowledge Graph...")
     kg = create_sample_knowledge_graph()
     
-    # 如果Neo4j可用，尝试同步
-    if neo4j.connected:
-        print("[OK] Neo4j connected, syncing data...")
-        # TODO: 同步数据到Neo4j
-    else:
-        print("[INFO] Running in simulation mode")
+    # 同步到图数据库
+    print("[OK] Syncing to graph database...")
+    neo4j.sync_from_knowledge_graph(kg)
     
     # 3. 创建问答系统
     print("\n[2] Initializing Q&A Systems...")
