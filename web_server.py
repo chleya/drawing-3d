@@ -520,6 +520,123 @@ def camera_stats():
     })
 
 
+# ==================== Drone Routes ====================
+
+@app.route('/drone')
+def drone_view():
+    """无人机视角页面"""
+    return '''
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeuralSite - 无人机视角</title>
+    <style>
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: white;
+        }
+        h1 { text-align: center; margin-bottom: 30px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .grid { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+        .card {
+            background: rgba(255,255,255,0.1);
+            border-radius: 15px;
+            padding: 20px;
+        }
+        img { width: 100%; border-radius: 10px; }
+        #progressLog {
+            background: rgba(0,0,0,0.3);
+            padding: 15px;
+            border-radius: 10px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .log-item { padding: 5px 0; border-bottom: 1px solid rgba(255,255,255,0.1); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚁 NeuralSite - 无人机视角监控</h1>
+        <div class="grid">
+            <div class="card">
+                <h2>📹 实时视频流</h2>
+                <img src="/drone_feed" />
+            </div>
+            <div class="card">
+                <h2>📊 宏观进度识别</h2>
+                <div id="progressLog">加载中...</div>
+            </div>
+        </div>
+    </div>
+    <script>
+        setInterval(function() {
+            fetch('/api/drone_progress')
+                .then(r => r.json())
+                .then(data => {
+                    const log = document.getElementById('progressLog');
+                    if (data.length > 0) {
+                        log.innerHTML = data.slice(-10).map(d => 
+                            `<div class="log-item">帧${d.frame}: ${d.persons}人, ${d.vehicles}车, 进度${d.progress_estimate}</div>`
+                        ).join('');
+                    }
+                });
+        }, 3000);
+    </script>
+</body>
+</html>
+'''
+
+
+@app.route('/drone_feed')
+def drone_feed():
+    """无人机视频流"""
+    def gen_frames():
+        cap = cv2.VideoCapture("data/test_video.mp4")
+        
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                cap.set(cv2.CAP_PROP_POS_FRAMES, 0)  # 循环播放
+                continue
+            
+            # YOLO检测
+            try:
+                detector = get_yolo()
+                detections = detector.detect_frame(frame)
+                annotated = detector.draw_detections(frame, detections)
+            except:
+                annotated = frame
+            
+            # 转为JPEG流
+            ret, buffer = cv2.imencode('.jpg', annotated)
+            frame_bytes = buffer.tobytes()
+            yield (b'--frame\r\nContent-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
+        
+        cap.release()
+    
+    return Response(gen_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
+
+
+@app.route('/api/drone_progress')
+def api_drone_progress():
+    """获取无人机进度"""
+    import json
+    try:
+        with open("data/drone_progress.jsonl", "r", encoding="utf-8") as f:
+            lines = f.readlines()[-10:]  # 最近10条
+        data = [json.loads(line.strip()) for line in lines if line.strip()]
+        return jsonify(data)
+    except:
+        return jsonify([])
+
+
 import numpy as np
 
 def run_server(host='0.0.0.0', port=5000):
