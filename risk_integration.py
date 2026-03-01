@@ -5,6 +5,7 @@
 """
 
 from risk_predictor import RiskPredictor
+from strategy_generator import StrategyGenerator
 from yolo_detector import YOLODetector
 from datetime import datetime
 import cv2
@@ -15,6 +16,7 @@ class RiskIntegrator:
     
     def __init__(self):
         self.predictor = RiskPredictor()
+        self.strategy_gen = StrategyGenerator()  # 策略生成器
         self.detector = YOLODetector()
         self.detector.load_model()
         self.frame_count = 0
@@ -54,10 +56,18 @@ class RiskIntegrator:
         risk = self.predictor.predict_risk(persons, violations)
         self.last_risk = risk
         
+        # 生成策略
+        strategy = self.strategy_gen.generate_strategy(
+            current_risk=risk.get('risk_level', 'low'),
+            persons=persons,
+            violations=violations
+        )
+        
         return {
             "persons": persons,
             "violations": violations,
             "risk": risk,
+            "strategy": strategy,
             "detections": detections,
             "frame_count": self.frame_count
         }
@@ -100,6 +110,14 @@ class RiskIntegrator:
         # 绘制人数
         cv2.putText(annotated, f"Persons: {result['persons']}", (10, 90),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1)
+        
+        # 绘制策略
+        strategy = result.get('strategy', {})
+        if strategy:
+            primary = strategy.get('primary_advice', '')
+            if primary:
+                cv2.putText(annotated, f"Strategy: {primary[:45]}", (10, 120), 
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 1)
         
         return annotated
     
