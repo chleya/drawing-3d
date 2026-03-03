@@ -138,10 +138,6 @@ def test_material():
     assert 'asphalt' in inv.materials
     print("[PASS] MaterialScheduler")
     return True
-    alerts = ms.check_reorder()
-    assert isinstance(alerts, list)
-    print("[PASS] MaterialScheduler")
-    return True
 
 
 def test_main():

@@ -41,7 +41,7 @@ for root, dirs, files in os.walk('E:\\'):
         break
 
 if images:
-    print(f"\nFound image: {os.path.basename(images[0]}")
+    print(f"\nFound image: {os.path.basename(images[0])}")
     print("Running OCR...")
     
     result = reader.readtext(images[0], detail=0)
